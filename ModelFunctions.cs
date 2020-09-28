@@ -8,8 +8,8 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using System.Collections.Generic;
-using Microsoft.AspNetCore.Http.Internal;
 using System.Linq;
+using Microsoft.AspNetCore.JsonPatch;
 
 namespace TemplateFunctions
 {
@@ -101,6 +101,26 @@ namespace TemplateFunctions
 
             model.Description = updateModel.Description;
             model.Name = updateModel.Name;
+
+            return new OkObjectResult(model);
+        }
+
+        [FunctionName("PatchModel")]
+        public static async Task<IActionResult> PatchModel(
+            [HttpTrigger(AuthorizationLevel.Function, "patch", Route = "models/{modelId}")] HttpRequest req,
+            ILogger log,
+            string modelId)
+        {
+            var model = MemoryDatabase.Models.FirstOrDefault(m => m.Id == modelId);
+            if (model == null)
+            {
+                return new NotFoundResult();
+            }
+
+            string requestBody = await new StreamReader(req.Body).ReadToEndAsync();
+            var patchModel = JsonConvert.DeserializeObject<JsonPatchDocument<GetModel>>(requestBody);
+
+            patchModel.ApplyTo(model);
 
             return new OkObjectResult(model);
         }
